@@ -81,6 +81,20 @@ db.exec(`
     delay_max_seconds INTEGER DEFAULT 25,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS contracts (
+    id TEXT PRIMARY KEY,
+    lead_id TEXT NOT NULL,
+    lead_name TEXT NOT NULL,
+    client_phone TEXT,
+    service_title TEXT DEFAULT 'Desenvolvimento de Website & Sistema Web',
+    total_value TEXT DEFAULT 'R$ 1.200,00',
+    payment_terms TEXT DEFAULT '50% de entrada no início + 50% na entrega e aprovação',
+    delivery_days INTEGER DEFAULT 10,
+    pdf_path TEXT,
+    status TEXT DEFAULT 'enviado', -- 'rascunho', 'enviado', 'assinado'
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 // Insert default AI settings if not exist

@@ -7,6 +7,7 @@ const VIEW_TITLES: Record<string, { title: string; subtitle: string }> = {
   radar: { title: 'Radar de Prospecção', subtitle: 'Varredura de empresas no Google Maps' },
   autopilot: { title: 'Robô Caçador Diário', subtitle: 'Prospecção autônoma nos EUA e Europa' },
   'ai-agent': { title: 'Agente Comercial IA', subtitle: 'Atendimento inteligente, negociação e fechamento no WhatsApp' },
+  contracts: { title: 'Contratos & Propostas', subtitle: 'Revisor de termos, gerador de PDF e envio automático' },
   kanban: { title: 'Pipeline Visual (CRM)', subtitle: 'Jornada de cada oportunidade' },
   leads: { title: 'Base Geral de Leads', subtitle: 'Lista completa com filtros e auditoria' },
   templates: { title: 'Central de Mensagens', subtitle: 'Modelos adaptados por país e idioma' },

@@ -7,6 +7,7 @@ import { leadsRouter } from './routes/leads.routes.js';
 import { templatesRouter } from './routes/templates.routes.js';
 import { autopilotRouter } from './routes/autopilot.routes.js';
 import { aiAgentRouter } from './routes/ai-agent.routes.js';
+import { contractRouter } from './routes/contract.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -20,6 +21,7 @@ app.use('/api/leads', leadsRouter);
 app.use('/api/templates', templatesRouter);
 app.use('/api/autopilot', autopilotRouter);
 app.use('/api/ai-agent', aiAgentRouter);
+app.use('/api/contracts', contractRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

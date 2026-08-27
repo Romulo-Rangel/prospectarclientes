@@ -301,7 +301,38 @@ export class WhatsAppSocketService {
           VALUES (?, ?, ?, ?, 'ai', ?, ?, ?, CURRENT_TIMESTAMP)
         `).run(msgIdAI, leadId, leadName, cleanPhone, aiDecision.replyText, aiDecision.decision, aiDecision.reasoning);
 
-        console.log(`📤 [IA Respondido Único] Resposta consolidada enviada para ${leadName} (${cleanPhone})!`);
+        // Se o cliente solicitou contrato explicitamente ou confirmou fechamento, anexa o PDF do Contrato!
+        const lowerCombined = combinedText.toLowerCase();
+        if (
+          lowerCombined.includes('contrato') || 
+          lowerCombined.includes('fechado') || 
+          lowerCombined.includes('vamos fazer') || 
+          lowerCombined.includes('pode gerar') || 
+          lowerCombined.includes('manda a proposta')
+        ) {
+          try {
+            console.log(`📄 [Gerando Contrato PDF] Criando contrato sob medida para ${leadName}...`);
+            const { ContractService } = await import('./contract.service.js');
+            const contractRes = await ContractService.generateContractPDF({
+              leadId,
+              leadName,
+              clientPhone: cleanPhone,
+              clientCity: lead?.city || 'Brasil'
+            });
+
+            // Envia o documento PDF no WhatsApp
+            await this.sock.sendMessage(jid, {
+              document: contractRes.pdfBuffer,
+              fileName: `Contrato_${leadName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+              mimetype: 'application/pdf',
+              caption: '📄 Segue em anexo o Contrato de Prestação de Serviços em PDF para sua conferência e arquivo.'
+            });
+
+            console.log(`✅ [Contrato Enviado] PDF do contrato entregue com sucesso para ${leadName}!`);
+          } catch (err: any) {
+            console.error('Erro ao gerar/enviar anexo de contrato:', err.message);
+          }
+        }
       }
     } catch (err: any) {
       console.error('Erro ao processar resposta consolidada da IA:', err.message);
@@ -333,6 +364,49 @@ export class WhatsAppSocketService {
         INSERT INTO chat_messages (id, lead_id, lead_name, phone, sender, message, ai_decision, created_at)
         VALUES (?, ?, ?, ?, 'user', ?, 'manual', CURRENT_TIMESTAMP)
       `).run(msgId, leadId || `lead-${clean}`, leadName || 'Lead', clean, text);
+
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
+   * Envio de Documento / PDF manual via WhatsApp
+   */
+  public static async sendDocument(
+    phone: string, 
+    documentBuffer: Buffer, 
+    fileName: string, 
+    caption?: string,
+    leadId?: string,
+    leadName?: string
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!this.sock || this.connectionStatus !== 'connected') {
+      return { success: false, error: 'WhatsApp não está conectado. Escaneie o QR Code no painel.' };
+    }
+
+    try {
+      let clean = phone.replace(/\D/g, '');
+      if (!clean) return { success: false, error: 'Telefone inválido' };
+
+      if (clean.length === 10 || clean.length === 11) {
+        clean = '55' + clean;
+      }
+
+      const jid = `${clean}@s.whatsapp.net`;
+      await this.sock.sendMessage(jid, {
+        document: documentBuffer,
+        fileName,
+        mimetype: 'application/pdf',
+        caption: caption || '📄 Documento em anexo'
+      });
+
+      const msgId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      db.prepare(`
+        INSERT INTO chat_messages (id, lead_id, lead_name, phone, sender, message, ai_decision, created_at)
+        VALUES (?, ?, ?, ?, 'ai', ?, 'contrato_enviado', CURRENT_TIMESTAMP)
+      `).run(msgId, leadId || `lead-${clean}`, leadName || 'Lead', clean, `📄 [Documento Anexo]: ${fileName}`);
 
       return { success: true };
     } catch (err: any) {

@@ -11,6 +11,7 @@ import {
   ChevronRight, 
   Flame,
   Bot,
+  FileText,
   X
 } from 'lucide-react';
 import { useApp, ActiveView } from '../../context/AppContext.js';
@@ -22,6 +23,7 @@ export const Sidebar: React.FC = () => {
     { id: 'radar', label: 'Radar de Busca', icon: Radar, section: 'PROSPECÇÃO', badge: 'Live' },
     { id: 'autopilot', label: 'Robô Caçador (10/dia)', icon: Flame, section: 'PROSPECÇÃO', badge: 'EUA & Europa' },
     { id: 'ai-agent', label: 'Agente Comercial IA', icon: Bot, section: 'OUTREACH & VENDAS', badge: 'Auto-SDR' },
+    { id: 'contracts', label: 'Contratos & Propostas', icon: FileText, section: 'OUTREACH & VENDAS', badge: 'PDF' },
     { id: 'kanban', label: 'Pipeline CRM', icon: LayoutDashboard, section: 'PROSPECÇÃO', badge: stats?.negotiating ? `${stats.negotiating} em neg.` : undefined },
     { id: 'leads', label: 'Base de Leads', icon: TableProperties, section: 'PROSPECÇÃO', badge: leads.length },
     { id: 'templates', label: 'Modelos de Mensagem', icon: MessageSquareCode, section: 'OUTREACH & VENDAS' },

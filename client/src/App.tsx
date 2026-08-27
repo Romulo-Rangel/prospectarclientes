@@ -10,6 +10,7 @@ import { AnalyticsView } from './views/AnalyticsView.js';
 import { SettingsView } from './views/SettingsView.js';
 import { AutopilotView } from './views/AutopilotView.js';
 import { AIAgentView } from './views/AIAgentView.js';
+import { ContractsView } from './views/ContractsView.js';
 import { LeadDetailModal } from './components/LeadDetailModal.js';
 import { WhatsAppAutoSenderModal } from './components/modals/WhatsAppAutoSenderModal.js';
 import { CheckCircle2, AlertCircle, Info } from 'lucide-react';
@@ -35,6 +36,7 @@ function MainLayout() {
       case 'radar': return <RadarView />;
       case 'autopilot': return <AutopilotView />;
       case 'ai-agent': return <AIAgentView />;
+      case 'contracts': return <ContractsView />;
       case 'kanban': return <KanbanView />;
       case 'leads': return <LeadsView />;
       case 'templates': return <TemplatesView />;

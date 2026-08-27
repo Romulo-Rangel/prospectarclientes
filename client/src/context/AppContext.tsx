@@ -3,7 +3,7 @@ import { Lead, Template, Stats, SearchParams } from '../types.js';
 import { api } from '../services/api.js';
 import confetti from 'canvas-confetti';
 
-export type ActiveView = 'radar' | 'autopilot' | 'ai-agent' | 'kanban' | 'leads' | 'templates' | 'analytics' | 'settings';
+export type ActiveView = 'radar' | 'autopilot' | 'ai-agent' | 'contracts' | 'kanban' | 'leads' | 'templates' | 'analytics' | 'settings';
 
 interface AppContextType {
   activeView: ActiveView;
