@@ -160,7 +160,7 @@ export class WhatsAppSocketService {
     try {
       const cleanPhone = rawPhone.replace(/\D/g, '');
 
-      // 1. Localiza lead na base de dados
+      // 1. Localiza lead na base de dados de prospecção
       const lead = db.prepare(`
         SELECT * FROM leads 
         WHERE formatted_phone LIKE '%' || ? || '%' 
@@ -168,7 +168,28 @@ export class WhatsAppSocketService {
         LIMIT 1
       `).get(cleanPhone, cleanPhone) as any;
 
-      const leadId = lead ? lead.id : `external-${cleanPhone}`;
+      // Verifica se existe histórico de prospecção iniciado pelo sistema
+      const hasPriorOutreach = db.prepare(`
+        SELECT id FROM chat_messages 
+        WHERE phone = ? AND sender IN ('ai', 'user')
+        LIMIT 1
+      `).get(cleanPhone) as any;
+
+      // 🛡️ FILTRO DE PRIVACIDADE MÁXIMA:
+      // Se NÃO for um lead cadastrado e NUNCA tiver recebido mensagem do sistema,
+      // é um contato pessoal (família, amigos, colegas de trabalho). A IA NÃO INTERFERE!
+      if (!lead && !hasPriorOutreach) {
+        console.log(`🛡️ [Filtro de Privacidade] Mensagem de ${cleanPhone} ignorada pela IA (contato pessoal/família/trabalho - não é lead).`);
+        return;
+      }
+
+      // Se o lead já tiver sido descartado / pediu para não mandar mensagem, não responde
+      if (lead && lead.status === 'descartado') {
+        console.log(`🛑 [Filtro Lead Descartado] ${lead.name} (${cleanPhone}) marcado como descartado. Nenhuma mensagem enviada.`);
+        return;
+      }
+
+      const leadId = lead ? lead.id : `lead-${cleanPhone}`;
       const leadName = lead ? lead.name : 'Cliente';
 
       // 2. Salva a mensagem recebida no histórico imediatamente

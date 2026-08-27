@@ -102,6 +102,25 @@ Se preferir, pode me chamar direto por aqui ou no meu WhatsApp: ${senderPhone}`;
       'não perturbe', 'dispensamos', 'já temos e não queremos'
     ];
 
+    // 0. ANÁLISE DE CONTATOS PESSOAIS / FAMILIARES (Segurança Extra)
+    const personalPatterns = [
+      'bênção', 'bencao', 'mãe', 'mae', 'pai', 'irmão', 'irmao', 'filho', 'filha',
+      'amor', 'vida', 'meu bem', 'churrasco', 'futebol', 'e aí mano', 'e ai mano',
+      'fala mano', 'fala parça', 'trampo', 'reunião interna', 'almoço em família'
+    ];
+
+    if (personalPatterns.some(pattern => lower.includes(pattern))) {
+      return {
+        replyText: '', // Fica em silêncio absoluto
+        decision: 'outro',
+        confidenceScore: 99,
+        reasoning: 'Detectada mensagem de cunho estritamente pessoal/familiar. A IA não interfere.',
+        suggestedNextStep: 'Nenhuma ação comercial necessária.',
+        shouldStopConversation: true,
+        newStatusForCRM: 'contatado'
+      };
+    }
+
     if (refusalPatterns.some(pattern => lower.includes(pattern))) {
       return {
         replyText: `Sem problemas, ${leadName}! Agradeço muito pelo seu retorno e pelo seu tempo. Não enviaremos mais mensagens. Se um dia precisar de suporte ou melhorias web, estamos à disposição. Desejo muito sucesso ao seu negócio! 🤝`,
