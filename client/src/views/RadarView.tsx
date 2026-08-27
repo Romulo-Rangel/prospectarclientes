@@ -51,6 +51,7 @@ export const RadarView: React.FC = () => {
   const [limit, setLimit] = useState(25);
   const [onlyWithoutWebsite, setOnlyWithoutWebsite] = useState(true);
   const [requirePhone, setRequirePhone] = useState(true);
+  const [autoDispatch, setAutoDispatch] = useState(false);
 
   const handleCountryChange = (c: typeof COUNTRIES[0]) => {
     setCountry(c.name);
@@ -66,7 +67,8 @@ export const RadarView: React.FC = () => {
       niche: niche.trim(),
       limit,
       onlyWithoutWebsite,
-      requirePhone
+      requirePhone,
+      autoDispatch
     });
   };
 
@@ -249,6 +251,19 @@ export const RadarView: React.FC = () => {
                 <span className="text-xs text-slate-200 font-semibold flex items-center gap-1.5">
                   <Globe className="w-3.5 h-3.5 text-amber-400" />
                   Apenas empresas SEM site
+                </span>
+              </label>
+
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={autoDispatch}
+                  onChange={(e) => setAutoDispatch(e.target.checked)}
+                  className="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                />
+                <span className="text-xs text-indigo-300 font-bold flex items-center gap-1.5 bg-indigo-950/60 px-2.5 py-1 rounded-lg border border-indigo-500/40">
+                  <Zap className="w-3.5 h-3.5 text-amber-400" />
+                  ⚡ Disparar Mensagens Automaticamente no WhatsApp Conectado
                 </span>
               </label>
             </div>

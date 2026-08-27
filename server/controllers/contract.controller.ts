@@ -8,7 +8,8 @@ export class ContractController {
 
   public static getTemplate(req: Request, res: Response) {
     try {
-      const template = ContractService.getContractTemplate();
+      const lang = (req.query.lang as any) || 'BR';
+      const template = ContractService.getContractTemplate(lang);
       res.json(template);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -17,7 +18,8 @@ export class ContractController {
 
   public static saveTemplate(req: Request, res: Response) {
     try {
-      const updated = ContractService.saveContractTemplate(req.body);
+      const lang = (req.body.lang as any) || (req.query.lang as any) || 'BR';
+      const updated = ContractService.saveContractTemplate(lang, req.body);
       res.json({ success: true, template: updated });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -36,7 +38,7 @@ export class ContractController {
   public static async generateContract(req: Request, res: Response) {
     try {
       const { leadId } = req.params;
-      const { customPrice, customTerms, customDays } = req.body;
+      const { customPrice, customTerms, customDays, language } = req.body;
 
       const lead = db.prepare('SELECT * FROM leads WHERE id = ?').get(leadId) as any;
       if (!lead) {
@@ -48,6 +50,8 @@ export class ContractController {
         leadName: lead.name,
         clientPhone: lead.formatted_phone || lead.phone,
         clientCity: lead.city,
+        country: lead.country,
+        language,
         totalValue: customPrice,
         paymentTerms: customTerms,
         deliveryDays: customDays
@@ -56,6 +60,7 @@ export class ContractController {
       res.json({
         success: true,
         contractId: result.contractId,
+        language: result.language,
         pdfUrl: `/api/contracts/download/${result.contractId}`,
         summaryText: result.summaryText
       });

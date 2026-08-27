@@ -52,4 +52,5 @@ export interface SearchParams {
   limit: number;
   onlyWithoutWebsite: boolean;
   requirePhone?: boolean;
+  autoDispatch?: boolean;
 }

@@ -5,4 +5,4 @@ export const searchRouter = Router();
 
 searchRouter.get('/stream', SearchController.stream);
 searchRouter.post('/', SearchController.execute);
-searchRouter.get('/history', SearchController.history);
+searchRouter.get('/history', SearchController.getHistory);
