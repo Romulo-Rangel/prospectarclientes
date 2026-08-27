@@ -65,14 +65,23 @@ export const WhatsAppAutoSenderModal: React.FC<WhatsAppAutoSenderModalProps> = (
           setCountdown(prev => prev - 1);
         }, 1000);
       } else {
-        // Trigger send for current lead
+        // Trigger direct internal send for current lead
         const lead = eligibleLeads[currentIndex];
         const msg = renderMessageForLead(lead);
         const phone = lead.formatted_phone || lead.phone?.replace(/\D/g, '');
 
         if (phone) {
-          const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(msg)}`;
-          window.open(url, '_blank');
+          fetch('/api/ai-agent/send-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              phone,
+              text: msg,
+              leadId: lead.id,
+              leadName: lead.name
+            })
+          }).catch(console.error);
+
           onUpdateStatus(lead.id, 'contatado');
           setCompletedCount(prev => prev + 1);
         }

@@ -3,7 +3,7 @@ import { Lead, Template } from '../types.js';
 import { 
   X, Globe, MapPin, Phone, MessageSquare, ExternalLink, Copy, Check, 
   Send, Sparkles, AlertCircle, CheckCircle2, Flame, ShieldAlert, FileText, 
-  ChevronRight, Building2, Smartphone, ArrowRight, UserCheck
+  ChevronRight, Building2, Smartphone, ArrowRight, UserCheck, Loader2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -77,10 +77,8 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
   const renderedMessage = renderMessage();
   const rawCleanPhone = lead.formatted_phone || lead.phone?.replace(/\D/g, '') || '';
   
-  // Universal WhatsApp link compatible with Desktop & Mobile phones
-  const whatsappUrl = rawCleanPhone
-    ? `https://api.whatsapp.com/send?phone=${rawCleanPhone}&text=${encodeURIComponent(renderedMessage)}`
-    : '';
+  const [isSending, setIsSending] = useState(false);
+  const [isSendingContract, setIsSendingContract] = useState(false);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(renderedMessage);
@@ -102,17 +100,51 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
     setIsSavingNotes(false);
   };
 
-  const handleSendWhatsApp = () => {
-    if (whatsappUrl) {
-      // Check if user is on mobile phone
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (isMobile && rawCleanPhone) {
-        // Direct native mobile app URI scheme
-        window.location.href = `whatsapp://send?phone=${rawCleanPhone}&text=${encodeURIComponent(renderedMessage)}`;
-      } else {
-        window.open(whatsappUrl, '_blank');
+  const handleSendWhatsApp = async () => {
+    if (!rawCleanPhone) return;
+    setIsSending(true);
+    try {
+      const res = await fetch('/api/ai-agent/send-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: rawCleanPhone,
+          text: renderedMessage,
+          leadId: lead.id,
+          leadName: lead.name
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'WhatsApp não conectado. Conecte pelo painel do Agente IA.');
       }
-      handleStatusChange('contatado');
+      await handleStatusChange('contatado');
+      confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleSendContract = async () => {
+    if (!rawCleanPhone) return;
+    setIsSendingContract(true);
+    try {
+      const res = await fetch(`/api/contracts/send/${lead.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Erro ao enviar contrato PDF.');
+      }
+      alert('📄 Contrato em PDF enviado com sucesso no WhatsApp do cliente!');
+      await handleStatusChange('em_negociacao');
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsSendingContract(false);
     }
   };
 
@@ -408,7 +440,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
             </div>
 
             {/* Big Action Buttons */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
               <button
                 onClick={handleCopy}
                 className="h-12 px-4 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
@@ -416,28 +448,58 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                 {copied ? (
                   <>
                     <Check className="w-4 h-4 text-emerald-400" />
-                    <span>Copiado para a Área de Transferência!</span>
+                    <span>Copiado!</span>
                   </>
                 ) : (
                   <>
                     <Copy className="w-4 h-4 text-slate-300" />
-                    <span>Copiar Mensagem Pronta</span>
+                    <span>Copiar Texto</span>
                   </>
                 )}
               </button>
 
-              {whatsappUrl ? (
-                <button
-                  onClick={handleSendWhatsApp}
-                  className="h-12 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:shadow-emerald-600/50 hover:scale-[1.01] active:scale-[0.98]"
-                >
-                  <Send className="w-4 h-4" />
-                  <span>Abrir no WhatsApp & Enviar 📲</span>
-                </button>
+              {rawCleanPhone ? (
+                <>
+                  <button
+                    onClick={handleSendWhatsApp}
+                    disabled={isSending}
+                    className="h-12 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+                  >
+                    {isSending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Enviando pelo Sistema...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        <span>Enviar pelo Sistema 📲</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={handleSendContract}
+                    disabled={isSendingContract}
+                    className="h-12 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+                  >
+                    {isSendingContract ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Gerando & Enviando PDF...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="w-4 h-4" />
+                        <span>Anexar Contrato PDF 📄</span>
+                      </>
+                    )}
+                  </button>
+                </>
               ) : (
                 <button
                   disabled
-                  className="h-12 px-4 rounded-xl bg-slate-800 text-slate-500 text-xs font-medium flex items-center justify-center gap-2 cursor-not-allowed"
+                  className="sm:col-span-2 h-12 px-4 rounded-xl bg-slate-800 text-slate-500 text-xs font-medium flex items-center justify-center gap-2 cursor-not-allowed"
                 >
                   <Phone className="w-4 h-4" />
                   <span>Sem Telefone do Destinatário</span>
