@@ -175,7 +175,7 @@ Se preferir, pode me chamar direto por aqui ou no meu WhatsApp: {{meu_telefone}}
       channel: 'whatsapp',
       target_country: 'PT',
       subject: '',
-      content: `Olá, viva! Chamo-me {{meu_nome}} e sou especialista em desenvolvimento de websites e plataformas digitais.
+      content: `Olá! Espero que se encontre bem. O meu nome é {{meu_nome}} e sou especialista em desenvolvimento de websites e plataformas digitais.
 
 Estive a pesquisar empresas de referência em {{nicho}} na zona de {{cidade}} e encontrei a *{{empresa}}*. Reparei que ainda não dispõem de um website profissional ou sistema de reservas online.
 

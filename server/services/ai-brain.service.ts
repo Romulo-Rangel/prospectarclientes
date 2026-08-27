@@ -139,7 +139,7 @@ Contacto directo por WhatsApp: ${senderPhone}
     }
 
     if (country.includes('portugal') || country === 'pt') {
-      return `Olá, viva! Espero que esteja tudo bem. O meu nome é ${senderName} e sou especialista em arquitetura web e plataformas digitais para empresas em ${city}.
+      return `Olá! Espero que se encontre bem. O meu nome é ${senderName} e sou especialista em arquitetura web e plataformas digitais para empresas em ${city}.
 
 Estive a acompanhar o trabalho da *${name}* no setor de ${niche}, e reparei que ainda não dispõem de um sítio web próprio com pedidos ou agendamentos integrados.
 
