@@ -146,13 +146,21 @@ export class WhatsAppSocketService {
     }
   }
 
+  private static messageQueues = new Map<string, {
+    messages: string[];
+    timer: NodeJS.Timeout;
+    jid: string;
+    rawPhone: string;
+  }>();
+
   /**
-   * Processa a mensagem recebida com a IA e responde
+   * Processa a mensagem recebida com buffer inteligente para evitar múltiplas respostas seguidas
    */
   private static async handleIncomingMessage(jid: string, rawPhone: string, text: string) {
     try {
-      // 1. Localiza lead na base de dados
       const cleanPhone = rawPhone.replace(/\D/g, '');
+
+      // 1. Localiza lead na base de dados
       const lead = db.prepare(`
         SELECT * FROM leads 
         WHERE formatted_phone LIKE '%' || ? || '%' 
@@ -163,20 +171,67 @@ export class WhatsAppSocketService {
       const leadId = lead ? lead.id : `external-${cleanPhone}`;
       const leadName = lead ? lead.name : 'Cliente';
 
-      // 2. Salva a mensagem recebida no histórico
+      // 2. Salva a mensagem recebida no histórico imediatamente
       const msgIdLead = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
       db.prepare(`
         INSERT INTO chat_messages (id, lead_id, lead_name, phone, sender, message, created_at)
         VALUES (?, ?, ?, ?, 'lead', ?, CURRENT_TIMESTAMP)
       `).run(msgIdLead, leadId, leadName, cleanPhone, text);
 
-      // 3. Verifica se a resposta automática da IA está ativa
+      // 3. Se a auto-resposta estiver desligada, apenas registra
       if (!this.isAutoReplyEnabled()) {
-        console.log('🤖 [IA Comercial] Auto-resposta desativada nas configurações. Mensagem apenas gravada.');
+        console.log('🤖 [IA Comercial] Auto-resposta desativada nas configurações. Mensagem gravada.');
         return;
       }
 
-      // 4. Carrega histórico recente da conversa
+      // 4. Buffer de Agrupamento Inteligente (Debounce de 8 segundos)
+      // Se o cliente mandar 2, 3 ou mais mensagens em sequência ("Oi", "Tudo bem?", "Quanto custa?"),
+      // nós aguardamos ele terminar de digitar e respondemos TUDO DE UMA VEZ só!
+      const existing = this.messageQueues.get(cleanPhone);
+      if (existing) {
+        clearTimeout(existing.timer);
+        existing.messages.push(text);
+      } else {
+        this.messageQueues.set(cleanPhone, {
+          messages: [text],
+          timer: null as any,
+          jid,
+          rawPhone
+        });
+      }
+
+      const currentQueue = this.messageQueues.get(cleanPhone)!;
+      console.log(`⏳ [Buffer WhatsApp] ${leadName} (${cleanPhone}) mandou mensagem (${currentQueue.messages.length} no bloco). Aguardando término da digitação (8s)...`);
+
+      currentQueue.timer = setTimeout(async () => {
+        const finalQueue = this.messageQueues.get(cleanPhone);
+        if (!finalQueue) return;
+        this.messageQueues.delete(cleanPhone);
+
+        const combinedText = finalQueue.messages.join('\n');
+        await this.processAggregatedMessage(finalQueue.jid, finalQueue.rawPhone, leadId, leadName, combinedText, lead);
+      }, 8000);
+
+    } catch (err: any) {
+      console.error('Erro ao receber mensagem:', err.message);
+    }
+  }
+
+  /**
+   * Executa a resposta única da IA para o bloco consolidado de mensagens
+   */
+  private static async processAggregatedMessage(
+    jid: string,
+    rawPhone: string,
+    leadId: string,
+    leadName: string,
+    combinedText: string,
+    lead: any
+  ) {
+    try {
+      const cleanPhone = rawPhone.replace(/\D/g, '');
+
+      // Carrega histórico recente da conversa
       const historyRows = db.prepare(`
         SELECT sender, message, created_at FROM chat_messages 
         WHERE lead_id = ? OR phone = ?
@@ -184,20 +239,20 @@ export class WhatsAppSocketService {
         LIMIT 10
       `).all(leadId, cleanPhone) as any[];
 
-      // 5. Cérebro da IA formula a decisão e resposta
+      // Cérebro da IA formula a decisão para todo o bloco de texto
       const aiDecision = AIBrainService.processIncomingMessage({
         leadId,
         leadName,
         phone: cleanPhone,
-        incomingText: text,
+        incomingText: combinedText,
         conversationHistory: historyRows,
         senderName: 'Rômulo',
         senderPhone: '(27) 98817-2973'
       });
 
-      console.log(`🧠 [IA Decisão] Decisão: ${aiDecision.decision.toUpperCase()} | Score: ${aiDecision.confidenceScore}%`);
+      console.log(`🧠 [IA Decisão Consolidada] Lead: ${leadName} | Decisão: ${aiDecision.decision.toUpperCase()} | Score: ${aiDecision.confidenceScore}%`);
 
-      // 6. Atualiza status do Lead no CRM se necessário
+      // Atualiza status do Lead no CRM
       if (lead) {
         db.prepare(`
           UPDATE leads 
@@ -208,30 +263,27 @@ export class WhatsAppSocketService {
         `).run(aiDecision.newStatusForCRM, aiDecision.reasoning, lead.id);
       }
 
-      // 7. Simula digitação humana antes de enviar
+      // Simula digitação humana antes de enviar a resposta
       if (this.sock && this.connectionStatus === 'connected' && aiDecision.replyText) {
-        // Envia presença digitando
         await this.sock.sendPresenceUpdate('composing', jid);
 
-        const delay = Math.floor(Math.random() * (12000 - 6000 + 1) + 6000); // 6s a 12s
-        await new Promise(res => setTimeout(res, delay));
+        const typingDelay = Math.min(Math.max(aiDecision.replyText.length * 40, 4000), 10000); // 4s a 10s proporcional ao tamanho
+        await new Promise(res => setTimeout(res, typingDelay));
 
-        // Envia mensagem
         await this.sock.sendMessage(jid, { text: aiDecision.replyText });
         await this.sock.sendPresenceUpdate('available', jid);
 
-        // Grava mensagem da IA no banco
+        // Grava a resposta única da IA no banco
         const msgIdAI = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
         db.prepare(`
           INSERT INTO chat_messages (id, lead_id, lead_name, phone, sender, message, ai_decision, ai_reasoning, created_at)
           VALUES (?, ?, ?, ?, 'ai', ?, ?, ?, CURRENT_TIMESTAMP)
         `).run(msgIdAI, leadId, leadName, cleanPhone, aiDecision.replyText, aiDecision.decision, aiDecision.reasoning);
 
-        console.log(`📤 [IA Respondido] Mensagem enviada para ${leadName} (${cleanPhone})!`);
+        console.log(`📤 [IA Respondido Único] Resposta consolidada enviada para ${leadName} (${cleanPhone})!`);
       }
-
     } catch (err: any) {
-      console.error('Erro ao processar mensagem com IA:', err.message);
+      console.error('Erro ao processar resposta consolidada da IA:', err.message);
     }
   }
 
