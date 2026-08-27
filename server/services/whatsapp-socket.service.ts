@@ -47,14 +47,25 @@ export class WhatsAppSocketService {
   /**
    * Inicializa ou reconecta a sessão do WhatsApp
    */
-  public static async initSocket() {
+  public static async initSocket(forceFresh = false) {
     if (this.sock && this.connectionStatus === 'connected') {
       return;
     }
 
     try {
+      if (forceFresh && fs.existsSync(this.authDir)) {
+        fs.rmSync(this.authDir, { recursive: true, force: true });
+      }
+
       if (!fs.existsSync(this.authDir)) {
         fs.mkdirSync(this.authDir, { recursive: true });
+      }
+
+      if (this.sock) {
+        try {
+          this.sock.end(undefined);
+        } catch {}
+        this.sock = null;
       }
 
       this.connectionStatus = 'connecting';
@@ -67,8 +78,11 @@ export class WhatsAppSocketService {
         version,
         auth: state,
         logger,
-        printQRInTerminal: false,
-        browser: ['LeadHunter AI', 'Chrome', '1.0.0']
+        printQRInTerminal: true,
+        browser: ['LeadHunter AI', 'Chrome', '1.0.0'],
+        connectTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 60000,
+        keepAliveIntervalMs: 25000
       });
 
       this.sock = sock;
@@ -84,7 +98,7 @@ export class WhatsAppSocketService {
           try {
             this.qrCodeDataUrl = await QRCode.toDataURL(qr);
             this.connectionStatus = 'qr_ready';
-            console.log('📲 [WhatsApp Socket] Novo QR Code gerado! Disponível no painel web.');
+            console.log('📲 [WhatsApp Socket] Novo QR Code gerado! Pronto para escanear no painel web.');
           } catch (err: any) {
             console.error('Erro ao converter QR Code para base64:', err.message);
           }
@@ -92,22 +106,28 @@ export class WhatsAppSocketService {
 
         if (connection === 'close') {
           const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
-          const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+          const isLoggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401;
 
-          console.log(`🔌 [WhatsApp Socket] Conexão fechada (código ${statusCode}). Reconectar: ${shouldReconnect}`);
+          console.log(`🔌 [WhatsApp Socket] Conexão fechada (código ${statusCode}). Deslogado: ${isLoggedOut}`);
           this.connectionStatus = 'disconnected';
           this.qrCodeDataUrl = null;
           this.connectedPhoneNumber = null;
 
-          if (shouldReconnect) {
-            setTimeout(() => this.initSocket(), 4000);
+          if (isLoggedOut) {
+            console.log('🧹 [WhatsApp Socket] Limpando credenciais expiradas para gerar novo QR Code limpo.');
+            if (fs.existsSync(this.authDir)) {
+              fs.rmSync(this.authDir, { recursive: true, force: true });
+            }
+          } else {
+            // Reconectar se for desconexão temporária
+            setTimeout(() => this.initSocket(false), 3000);
           }
         } else if (connection === 'open') {
           this.connectionStatus = 'connected';
           this.qrCodeDataUrl = null;
           const jid = sock.user?.id || '';
           this.connectedPhoneNumber = jid.split(':')[0] || jid.split('@')[0];
-          console.log(`✅ [WhatsApp Socket] Conectado com sucesso ao WhatsApp: ${this.connectedPhoneNumber}`);
+          console.log(`✅ [WhatsApp Socket] Conectado com sucesso ao WhatsApp do celular: ${this.connectedPhoneNumber}`);
         }
       });
 

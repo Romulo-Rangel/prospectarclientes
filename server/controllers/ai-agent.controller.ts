@@ -31,8 +31,8 @@ export class AIAgentController {
 
   public static async connect(req: Request, res: Response) {
     try {
-      await WhatsAppSocketService.initSocket();
-      res.json({ success: true, message: 'Inicializando conexão com WhatsApp...' });
+      await WhatsAppSocketService.initSocket(true);
+      res.json({ success: true, message: 'Inicializando conexão com WhatsApp e gerando QR Code...' });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
