@@ -151,24 +151,47 @@ Pode responder diretamente por aqui ou no meu WhatsApp: ${senderPhone}
 Com os melhores cumprimentos!`;
     }
 
+    // Variações dinâmicas de abertura (Anti-Spam Spintax)
+    const greetingsBR = [
+      `Olá, tudo bem? Me chamo ${senderName}`,
+      `Oi, tudo bem? Sou o ${senderName}`,
+      `Olá! Como vai? Meu nome é ${senderName}`,
+      `Tudo bem? Aqui é o ${senderName}`
+    ];
+    const randGreetingBR = greetingsBR[Math.floor(Math.random() * greetingsBR.length)];
+
+    const hooksBR = [
+      `trabalho desenvolvendo sites profissionais e sistemas de alta performance para empresas de ${city}.`,
+      `sou especialista em criação de websites de alta conversão e automações para negócios em ${city}.`,
+      `desenvolvo soluções digitais e sites modernos focados em vendas para negócios locais de ${city}.`
+    ];
+    const randHookBR = hooksBR[Math.floor(Math.random() * hooksBR.length)];
+
+    const callsBR = [
+      `Posso te enviar uma prévia visual de 2 minutos mostrando como ficaria o site da *${name}* sem nenhum custo ou compromisso?`,
+      `Teria 2 minutinhos para dar uma olhada numa proposta visual gratuita que preparei para a *${name}*?`,
+      `Se fizer sentido para você, posso te mostrar uma demonstração rápida sem compromisso de como estruturar a presença digital da *${name}*.`
+    ];
+    const randCallBR = callsBR[Math.floor(Math.random() * callsBR.length)];
+
     // Default Brasil (PT-BR)
     if (lead.website_status === 'error' || lead.website_status === 'offline') {
-      return `Olá! Tudo bem? Me chamo ${senderName} e sou desenvolvedor e especialista em infraestrutura e sistemas web.
+      return `${randGreetingBR} e atuo com desenvolvimento e infraestrutura web.
 
 Estava pesquisando referências de ${niche} em ${city} e encontrei a *${name}*. Fui tentar acessar o site de vocês (${lead.website || 'link do Google'}), mas notei que a página está fora do ar ou com erro no servidor.
 
-Como a maioria dos clientes pesquisa no Google antes de fechar negócio, isso pode estar custando clientes todos os dias. Se precisarem de ajuda para restabelecer ou colocar uma página moderna e rápida no ar, fico à total disposição!
+Como muitos clientes buscam no Google antes de entrar em contato, isso pode estar custando clientes todos os dias. Se precisarem de ajuda para restabelecer ou colocar uma página moderna e rápida no ar, fico à total disposição!
 
 Pode me responder por aqui mesmo ou no WhatsApp: ${senderPhone}`;
     }
 
-    return `Olá, tudo bem? Me chamo ${senderName} e sou desenvolvedor de software especialista em sites de alta performance e automações para empresas de ${city}.
+    return `${randGreetingBR} e ${randHookBR}
 
 Encontrei a *${name}* com ótimas avaliações em ${niche}, mas percebi que vocês ainda não possuem um site próprio ou catálogo digital oficial no Google Maps.
 
 ${this.getTechAdvice(niche, 'BR')}
 
-Posso te enviar uma prévia visual rápida de como ficaria o site da *${name}* sem nenhum custo ou compromisso?
+${randCallBR}
 
 Se preferir, pode me chamar direto por aqui ou no meu WhatsApp: ${senderPhone}`;
   }

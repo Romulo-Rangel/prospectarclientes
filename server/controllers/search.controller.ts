@@ -64,12 +64,16 @@ export class SearchController {
       // Se o usuário solicitou autoDispatch (Disparo Automático Imediato)
       let dispatchScheduled = 0;
       if (autoDispatch) {
-        const validLeads = leads.filter(l => l.formatted_phone || (l.phone && l.phone.replace(/\D/g, '').length >= 8));
+        // Limita a no máximo 10 envios por lote para proteção do chip (aquecimento seguro)
+        const validLeads = leads
+          .filter(l => l.formatted_phone || (l.phone && l.phone.replace(/\D/g, '').length >= 8))
+          .slice(0, 10);
+        
         dispatchScheduled = validLeads.length;
 
-        // Disparo assíncrono em segundo plano com delay anti-ban
+        // Disparo assíncrono em segundo plano com delay humanizado anti-ban
         (async () => {
-          console.log(`🚀 [Auto-Disparo Imediato] Iniciando envio automático para ${validLeads.length} leads qualificados...`);
+          console.log(`🚀 [Auto-Disparo Protegido] Iniciando envio seguro com intervalo humano (45s-90s) para ${validLeads.length} leads...`);
           for (let i = 0; i < validLeads.length; i++) {
             const lead = validLeads[i];
             const phone = lead.formatted_phone || lead.phone;
@@ -86,13 +90,14 @@ export class SearchController {
               console.warn(`Erro no auto-disparo para ${lead.name}:`, err.message);
             }
 
-            // Intervalo humano seguro entre envios (12s a 20s)
+            // Intervalo humano seguro entre envios (45s a 90s com variação natural)
             if (i < validLeads.length - 1) {
-              const delay = Math.floor(Math.random() * (20000 - 12000 + 1) + 12000);
+              const delay = Math.floor(Math.random() * (90000 - 45000 + 1) + 45000);
+              console.log(`⏳ [Anti-Spam] Aguardando ${Math.round(delay / 1000)}s antes do próximo envio...`);
               await new Promise(r => setTimeout(r, delay));
             }
           }
-          console.log(`✅ [Auto-Disparo Imediato] Finalizado envio de ${validLeads.length} leads!`);
+          console.log(`✅ [Auto-Disparo Protegido] Finalizado envio de ${validLeads.length} leads!`);
         })();
       }
 
