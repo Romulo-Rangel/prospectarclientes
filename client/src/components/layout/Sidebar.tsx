@@ -20,7 +20,8 @@ export const Sidebar: React.FC = () => {
 
   const navItems: { id: ActiveView; label: string; icon: React.ElementType; badge?: string | number; section: string }[] = [
     { id: 'radar', label: 'Radar de Busca', icon: Radar, section: 'PROSPECÇÃO', badge: 'Live' },
-    { id: 'autopilot', label: 'Robô Caçador (10/dia)', icon: Bot, section: 'PROSPECÇÃO', badge: 'EUA & Europa' },
+    { id: 'autopilot', label: 'Robô Caçador (10/dia)', icon: Flame, section: 'PROSPECÇÃO', badge: 'EUA & Europa' },
+    { id: 'ai-agent', label: 'Agente Comercial IA', icon: Bot, section: 'OUTREACH & VENDAS', badge: 'Auto-SDR' },
     { id: 'kanban', label: 'Pipeline CRM', icon: LayoutDashboard, section: 'PROSPECÇÃO', badge: stats?.negotiating ? `${stats.negotiating} em neg.` : undefined },
     { id: 'leads', label: 'Base de Leads', icon: TableProperties, section: 'PROSPECÇÃO', badge: leads.length },
     { id: 'templates', label: 'Modelos de Mensagem', icon: MessageSquareCode, section: 'OUTREACH & VENDAS' },

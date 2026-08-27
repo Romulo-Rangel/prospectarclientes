@@ -58,7 +58,39 @@ db.exec(`
     total_found INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS chat_messages (
+    id TEXT PRIMARY KEY,
+    lead_id TEXT,
+    lead_name TEXT,
+    phone TEXT NOT NULL,
+    sender TEXT NOT NULL, -- 'lead', 'ai', 'user'
+    message TEXT NOT NULL,
+    ai_decision TEXT, -- 'interessado_fechar', 'negociando', 'duvida', 'recusou', 'outro'
+    ai_reasoning TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS ai_agent_settings (
+    id TEXT PRIMARY KEY,
+    is_auto_reply_enabled INTEGER DEFAULT 1,
+    is_auto_hunter_enabled INTEGER DEFAULT 1,
+    sdr_persona TEXT,
+    price_range TEXT DEFAULT 'R$ 900 a R$ 3.500',
+    delay_min_seconds INTEGER DEFAULT 10,
+    delay_max_seconds INTEGER DEFAULT 25,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `);
+
+// Insert default AI settings if not exist
+const aiSettingsCount = db.prepare('SELECT count(*) as count FROM ai_agent_settings').get() as { count: number };
+if (aiSettingsCount.count === 0) {
+  db.prepare(`
+    INSERT INTO ai_agent_settings (id, is_auto_reply_enabled, is_auto_hunter_enabled, sdr_persona, price_range)
+    VALUES ('default', 1, 1, 'Consultor Comercial Especialista em Soluções Web & Automação do Rômulo', 'R$ 900 a R$ 3.500')
+  `).run();
+}
 
 // Seed default templates if none exist
 const count = db.prepare('SELECT count(*) as count FROM templates').get() as { count: number };
