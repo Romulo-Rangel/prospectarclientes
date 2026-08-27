@@ -10,3 +10,5 @@ aiAgentRouter.post('/toggle-auto-reply', AIAgentController.toggleAutoReply);
 aiAgentRouter.get('/conversations', AIAgentController.getConversations);
 aiAgentRouter.get('/conversations/:leadId', AIAgentController.getConversationThread);
 aiAgentRouter.post('/send-message', AIAgentController.sendMessage);
+aiAgentRouter.get('/business-hours', AIAgentController.getBusinessHours);
+aiAgentRouter.post('/business-hours', AIAgentController.saveBusinessHours);

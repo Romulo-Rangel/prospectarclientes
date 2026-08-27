@@ -1,4 +1,5 @@
 import { db } from '../db/database.js';
+import { BusinessHoursService } from './business-hours.service.js';
 
 export interface AIDecisionResult {
   replyText: string;
@@ -68,7 +69,43 @@ export class AIBrainService {
   }
 
   /**
-   * Gera abordagem inicial hiper-personalizada baseada na dor específica da empresa
+   * Base de Conhecimento e Aconselhamento Tecnológico Especializado
+   */
+  public static getTechAdvice(nicheText: string, lang: 'BR' | 'US' | 'ES' | 'PT' = 'BR'): string {
+    const n = (nicheText || '').toLowerCase();
+
+    // Alimentação / Restaurantes / Bares
+    if (n.includes('restaurante') || n.includes('pizzaria') || n.includes('hamburguer') || n.includes('bar') || n.includes('café') || n.includes('food') || n.includes('pizza')) {
+      if (lang === 'US') {
+        return `💡 *Tech Strategy for Restaurants:* Relying only on third-party delivery apps costs you up to 30% in commission fees per order. Having your own direct online ordering system saves thousands each month, builds your own customer database, and speeds up WhatsApp orders.`;
+      }
+      return `💡 *Dica Estratégica para Gastronomia:* Depender 100% de apps de delivery custa entre 25% e 30% de comissão em cada pedido. Ter um Cardápio Digital próprio com botão direto pro WhatsApp zera essas taxas, fideliza a sua clientela e aumenta o lucro líquido imediatamente.`;
+    }
+
+    // Clínicas / Saúde / Estética
+    if (n.includes('clínica') || n.includes('dentista') || n.includes('médic') || n.includes('estética') || n.includes('salão') || n.includes('barbearia') || n.includes('dental') || n.includes('clinic')) {
+      if (lang === 'US') {
+        return `💡 *Tech Strategy for Clinics:* Automated 24/7 online scheduling reduces patient no-shows by up to 40% with automated WhatsApp appointment reminders, while boosting Google search credibility.`;
+      }
+      return `💡 *Dica Estratégica para Clínicas & Saúde:* Mais de 60% dos pacientes pesquisam e querem agendar fora do horário comercial (à noite ou finais de semana). Um sistema de agendamento online 24h integrado ao WhatsApp evita a perda de pacientes para a concorrência e reduz faltas com lembretes automáticos.`;
+    }
+
+    // B2B / Serviços Especializados / Mecânicas / Advogados
+    if (n.includes('advocacia') || n.includes('contabil') || n.includes('oficina') || n.includes('imobili') || n.includes('móveis') || n.includes('marcenaria')) {
+      if (lang === 'US') {
+        return `💡 *Tech Strategy for High-Ticket Services:* Over 85% of clients evaluate website speed (under 1.5s load time) and SSL security before requesting quotes. Google ranks fast, mobile-friendly sites on the top 3 spots of Google Maps.`;
+      }
+      return `💡 *Dica Estratégica para Serviços & B2B:* No Google, quem tem site com carregamento em menos de 1 segundo (Google Core Web Vitals) e segurança SSL ganha a preferência do algoritmo para ficar no topo do Google Maps, transmitindo autoridade e atraindo orçamentos de maior valor.`;
+    }
+
+    if (lang === 'US') {
+      return `💡 *Tech Strategy:* A modern mobile-optimized web infrastructure increases Google local discovery by 3x and converts visitors into paying customers instantly via direct chat integrations.`;
+    }
+    return `💡 *Dica de Tecnologia & Conversão:* Hoje, 80% das buscas por serviços locais acontecem no celular. Um site ultrarrápido com botão de chamada direta para o WhatsApp multiplica a taxa de conversão de visitantes em clientes pagantes.`;
+  }
+
+  /**
+   * Gera abordagem inicial hiper-personalizada com aconselhamento consultivo
    */
   public static generateInitialPitch(lead: any, senderName: string = 'Rômulo', senderPhone: string = '(27) 98817-2973'): string {
     const name = lead.name || 'Empresa';
@@ -78,18 +115,20 @@ export class AIBrainService {
 
     // Check language
     if (country.includes('united states') || country.includes('eua') || country === 'us') {
-      return `Hello! Hope you are having a productive week. My name is ${senderName} and I build modern, high-converting websites and booking systems for local businesses in ${city}.
+      return `Hello! Hope you are having a productive week. My name is ${senderName} and I am a Software Engineer & Web Architect.
 
-I came across *${name}* while researching standout ${niche} in ${city}, and noticed you do not have an official website or online reservation platform set up on Google yet.
+I came across *${name}* while researching standout ${niche} in ${city}, and noticed you do not have an official, fast-loading business website set up on Google Maps yet.
 
-A sleek, mobile-optimized website makes a massive difference in customer trust and online bookings. Would you be open to a quick, free 2-minute mockup for *${name}*?
+${this.getTechAdvice(niche, 'US')}
+
+We build high-converting websites optimized for smartphones with instant booking and direct chat integrations. Would you be open to a quick, free 2-minute mockup for *${name}*?
 
 You can reply directly here or on WhatsApp: ${senderPhone}
 Best regards!`;
     }
 
     if (country.includes('espanha') || country.includes('spain') || country === 'es') {
-      return `¡Hola! Espero que esté teniendo un excelente día. Mi nombre es ${senderName} y me especializo en diseño web y sistemas de captación digital para empresas en ${city}.
+      return `¡Hola! Espero que esté teniendo un excelente día. Mi nombre es ${senderName}, desarrollador de software y soluciones web para empresas en ${city}.
 
 Estuve revisando negocios destacados de ${niche} en ${city} y encontré a *${name}*. Noté que todavía no disponen de una página web oficial o catálogo online optimizado para móviles.
 
@@ -100,11 +139,13 @@ Contacto directo por WhatsApp: ${senderPhone}
     }
 
     if (country.includes('portugal') || country === 'pt') {
-      return `Olá, viva! Espero que esteja tudo bem. O meu nome é ${senderName} e sou especialista em desenvolvimento de websites modernos e plataformas de agendamento online.
+      return `Olá, viva! Espero que esteja tudo bem. O meu nome é ${senderName} e sou especialista em arquitetura web e plataformas digitais para empresas em ${city}.
 
-Estive a acompanhar o excelente trabalho da *${name}* em ${city} no setor de ${niche}, e reparei que ainda não dispõem de um sítio web próprio com pedidos ou agendamentos integrados.
+Estive a acompanhar o trabalho da *${name}* no setor de ${niche}, e reparei que ainda não dispõem de um sítio web próprio com pedidos ou agendamentos integrados.
 
-Atualmente, um website rápido e profissional duplica a confiança dos clientes que pesquisam no Google. Teria disponibilidade para ver uma demonstração rápida e sem compromisso para a *${name}*?
+${this.getTechAdvice(niche, 'PT')}
+
+Teria disponibilidade para ver uma demonstração rápida e sem compromisso de como ficaria a nova plataforma da *${name}*?
 
 Pode responder diretamente por aqui ou no meu WhatsApp: ${senderPhone}
 Com os melhores cumprimentos!`;
@@ -112,20 +153,20 @@ Com os melhores cumprimentos!`;
 
     // Default Brasil (PT-BR)
     if (lead.website_status === 'error' || lead.website_status === 'offline') {
-      return `Olá! Tudo bem? Me chamo ${senderName} e sou especialista em desenvolvimento e infraestrutura de sistemas web.
+      return `Olá! Tudo bem? Me chamo ${senderName} e sou desenvolvedor e especialista em infraestrutura e sistemas web.
 
-Estava pesquisando referências de ${niche} em ${city} e encontrei a *${name}*. Fui tentar acessar o site de vocês (${lead.website || 'link do Google'}), mas notei que a página está com erro ou fora do ar no momento.
+Estava pesquisando referências de ${niche} em ${city} e encontrei a *${name}*. Fui tentar acessar o site de vocês (${lead.website || 'link do Google'}), mas notei que a página está fora do ar ou com erro no servidor.
 
-Como muitos clientes tentam acessar o site antes de comprar, isso pode estar custando vendas todos os dias. Se precisarem de ajuda para restabelecer ou colocar uma página moderna e rápida no ar, fico à total disposição!
+Como a maioria dos clientes pesquisa no Google antes de fechar negócio, isso pode estar custando clientes todos os dias. Se precisarem de ajuda para restabelecer ou colocar uma página moderna e rápida no ar, fico à total disposição!
 
 Pode me responder por aqui mesmo ou no WhatsApp: ${senderPhone}`;
     }
 
-    return `Olá, tudo bem? Me chamo ${senderName} e trabalho desenvolvendo sites profissionais e sistemas de agendamento/pedidos para empresas de ${city}.
+    return `Olá, tudo bem? Me chamo ${senderName} e sou desenvolvedor de software especialista em sites de alta performance e automações para empresas de ${city}.
 
-Encontrei a *${name}* com ótimas avaliações em ${niche}, mas percebi que vocês ainda não possuem um site próprio ou cardápio/catálogo digital no Google Maps.
+Encontrei a *${name}* com ótimas avaliações em ${niche}, mas percebi que vocês ainda não possuem um site próprio ou catálogo digital oficial no Google Maps.
 
-Hoje, mais de 80% dos clientes buscam no Google antes de entrar em contato. Criamos sistemas rápidos com botão direto para o WhatsApp que passam muita credibilidade e aumentam as vendas.
+${this.getTechAdvice(niche, 'BR')}
 
 Posso te enviar uma prévia visual rápida de como ficaria o site da *${name}* sem nenhum custo ou compromisso?
 
@@ -133,7 +174,7 @@ Se preferir, pode me chamar direto por aqui ou no meu WhatsApp: ${senderPhone}`;
   }
 
   /**
-   * Analisa a mensagem recebida pelo cliente no WhatsApp em qualquer idioma, formula a resposta persuasiva e toma a decisão comercial
+   * Analisa a mensagem recebida pelo cliente no WhatsApp com aconselhamento técnico e respeito ao horário comercial
    */
   public static processIncomingMessage(params: {
     leadId?: string;
@@ -144,6 +185,7 @@ Se preferir, pode me chamar direto por aqui ou no meu WhatsApp: ${senderPhone}`;
     senderName?: string;
     senderPhone?: string;
     leadCountry?: string;
+    leadNiche?: string;
   }): AIDecisionResult {
     const {
       leadName = 'Cliente',
@@ -152,13 +194,14 @@ Se preferir, pode me chamar direto por aqui ou no meu WhatsApp: ${senderPhone}`;
       phone,
       senderName = 'Rômulo',
       senderPhone = '(27) 98817-2973',
-      leadCountry
+      leadCountry,
+      leadNiche = ''
     } = params;
 
     const lower = incomingText.toLowerCase().trim();
     const lang = this.detectLanguage(phone, incomingText, leadCountry);
 
-    // 0. ANÁLISE DE CONTATOS PESSOAIS / FAMILIARES (Segurança Extra)
+    // 0. ANÁLISE DE CONTATOS PESSOAIS / FAMILIARES (Segurança Absoluta)
     const personalPatterns = [
       'bênção', 'bencao', 'mãe', 'mae', 'pai', 'irmão', 'irmao', 'filho', 'filha',
       'amor', 'vida', 'meu bem', 'churrasco', 'futebol', 'e aí mano', 'e ai mano',
@@ -178,6 +221,22 @@ Se preferir, pode me chamar direto por aqui ou no meu WhatsApp: ${senderPhone}`;
       };
     }
 
+    // 1. CHECAGEM DE HORÁRIO COMERCIAL (8h/dia e intervalo de almoço)
+    const bhStatus = BusinessHoursService.checkCurrentStatus();
+    if (!bhStatus.isWorkingTime && bhStatus.respectBusinessHours) {
+      const outOfHoursMsg = BusinessHoursService.getOutOfHoursMessage(lang, bhStatus);
+      return {
+        replyText: outOfHoursMsg,
+        decision: 'duvida',
+        confidenceScore: 90,
+        reasoning: bhStatus.isLunchTime ? 'Cliente enviou mensagem no horário de almoço.' : 'Cliente enviou mensagem fora do expediente comercial.',
+        suggestedNextStep: 'Aguardar retomada do expediente para dar sequência ao atendimento.',
+        shouldStopConversation: false,
+        newStatusForCRM: 'contatado',
+        detectedLanguage: lang
+      };
+    }
+
     // ==========================================
     // INGLÊS (USA / UK / GLOBAL)
     // ==========================================
@@ -192,6 +251,26 @@ Se preferir, pode me chamar direto por aqui ou no meu WhatsApp: ${senderPhone}`;
           suggestedNextStep: 'Respect choice and mark as rejected in CRM.',
           shouldStopConversation: true,
           newStatusForCRM: 'descartado',
+          detectedLanguage: 'US'
+        };
+      }
+
+      if (lower.includes('tech') || lower.includes('how it works') || lower.includes('what do you build') || lower.includes('features')) {
+        return {
+          replyText: `Here is exactly how our tech architecture works for your business, ${leadName}:
+
+⚡ *Ultra-Fast Performance:* Built on modern web stacks achieving 95+ on Google PageSpeed (sub-1 second load time).
+📱 *Mobile-First & Responsive:* Flawless layout on iPhone, Android and tablets.
+🛡️ *Enterprise Security:* Free SSL certificate, Cloudflare DDoS shielding, and custom domain setup.
+📅 *Automated Lead Capture:* Direct WhatsApp integration + automated calendar bookings.
+
+Would you like me to send a live mockup showing this structure customized for ${leadName}?`,
+          decision: 'duvida',
+          confidenceScore: 96,
+          reasoning: 'US Lead asked about technology stack and architectural benefits.',
+          suggestedNextStep: 'Send live demo mockup and explain technical advantages.',
+          shouldStopConversation: false,
+          newStatusForCRM: 'em_negociacao',
           detectedLanguage: 'US'
         };
       }
@@ -312,6 +391,39 @@ Si lo desea, ¡puedo enviarle un modelo previo ahora mismo!`,
       };
     }
 
+    // DÚVIDAS TÉCNICAS E ACONSELHAMENTO DE TECNOLOGIA
+    if (
+      lower.includes('como funciona') || 
+      lower.includes('o que inclui') || 
+      lower.includes('tecnologia') || 
+      lower.includes('vantagem') || 
+      lower.includes('hospedagem') || 
+      lower.includes('dominio') || 
+      lower.includes('domínio') || 
+      lower.includes('segurança')
+    ) {
+      return {
+        replyText: `Com certeza, ${leadName}! Como desenvolvedor especialista, estruturamos a sua página com as melhores tecnologias do mercado:
+
+⚡ *Velocidade Extrema (Google PageSpeed 95+):* Carregamento em menos de 1 segundo para não perder nenhum cliente por lentidão;
+📱 *Design 100% Responsivo:* Perfeito e adaptado para iPhone, Android e computadores;
+🔒 *Segurança & Certificado SSL:* Cadeado de segurança verde ativado e proteção contra ataques;
+🚀 *SEO Google Maps:* Estrutura otimizada para a sua empresa aparecer na primeira página das buscas locais;
+📲 *Botão Direto de WhatsApp:* Facilita o contato do cliente em apenas 1 clique.
+
+${this.getTechAdvice(leadNiche, lang)}
+
+Gostaria de ver uma prévia visual rápida de como ficaria para a *${leadName}*?`,
+        decision: 'duvida',
+        confidenceScore: 96,
+        reasoning: 'Lead solicitou detalhes técnicos. A IA forneceu consultoria especializada com argumentos de autoridade e valor.',
+        suggestedNextStep: 'Enviar modelo e apresentar proposta de fechamento.',
+        shouldStopConversation: false,
+        newStatusForCRM: 'em_negociacao',
+        detectedLanguage: lang
+      };
+    }
+
     const closingPatterns = [
       'quero ver', 'pode mandar', 'tenho interesse', 'gostei', 'vamos fazer', 
       'me liga', 'pode me ligar', 'qual o valor', 'como fazemos', 'fechado', 
@@ -325,11 +437,13 @@ Si lo desea, ¡puedo enviarle un modelo previo ahora mismo!`,
 
       if (lower.includes('valor') || lower.includes('preço') || lower.includes('preco') || lower.includes('quanto')) {
         return {
-          replyText: `Excelente pergunta, ${leadName}! Nossos projetos são sob medida para não pesar no caixa: temos páginas profissionais e sites completos a partir de ${priceText} (podendo parcelar e com entrega em até 7-10 dias), já incluindo versão celular ultrarrápida e botão direto pro WhatsApp.
+          replyText: `Excelente pergunta, ${leadName}! Nossos projetos são sob medida para não pesar no caixa: temos páginas profissionais e sistemas completos a partir de ${priceText} (podendo parcelar com 50% de entrada e 50% na entrega após aprovação).
 
-Para eu te passar o valor exato pro seu caso, você prefere um site institucional para passar confiança ou gostaria de incluir pedidos/agendamentos online?
+O projeto já inclui hospedagem rápida, domínio configurado, versão celular ultrarrápida e botão direto pro WhatsApp.
 
-Se preferir, posso te ligar em 2 minutinhos ou te mandar um modelo pronto agora mesmo!`,
+Para eu te passar a proposta exata, você gostaria de uma página institucional de autoridade ou também quer incluir catálogo/agendamentos online?
+
+Se preferir, posso te apresentar numa chamada rápida de 2 minutinhos ou te mandar o modelo por aqui!`,
           decision: 'interessado_fechar',
           confidenceScore: 95,
           reasoning: 'Lead perguntou preço e demonstrou forte interesse de compra.',

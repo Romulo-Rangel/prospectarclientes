@@ -3,7 +3,8 @@ import { useApp } from '../context/AppContext.js';
 import { 
   Bot, QrCode, Smartphone, Zap, Sparkles, CheckCircle2, 
   AlertCircle, MessageSquare, Send, RefreshCw, Power, 
-  Flame, ThumbsUp, ThumbsDown, Clock, ShieldCheck, Check
+  Flame, ThumbsUp, ThumbsDown, Clock, ShieldCheck, Check,
+  Utensils, Moon, Sun, Save, Sliders, Laptop
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -23,12 +24,36 @@ export const AIAgentView: React.FC = () => {
     };
   } | null>(null);
 
+  const [businessHours, setBusinessHours] = useState<{
+    isWorkingTime: boolean;
+    isLunchTime: boolean;
+    statusText: string;
+    badgeType: 'open' | 'lunch' | 'closed';
+    workStartTime: string;
+    workEndTime: string;
+    lunchStartTime: string;
+    lunchEndTime: string;
+    respectBusinessHours: boolean;
+  }>({
+    isWorkingTime: true,
+    isLunchTime: false,
+    statusText: '🟢 Em Horário Comercial (09:00 às 18:00) - 8h Diárias',
+    badgeType: 'open',
+    workStartTime: '09:00',
+    workEndTime: '18:00',
+    lunchStartTime: '12:00',
+    lunchEndTime: '13:00',
+    respectBusinessHours: true
+  });
+
   const [conversations, setConversations] = useState<any[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<any | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [manualText, setManualText] = useState('');
   const [isSendingManual, setIsSendingManual] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSavingHours, setIsSavingHours] = useState(false);
+  const [showHoursConfig, setShowHoursConfig] = useState(false);
 
   const loadStatus = async () => {
     try {
@@ -36,6 +61,19 @@ export const AIAgentView: React.FC = () => {
       if (!res.ok) return;
       const data = await res.json();
       setStatusData(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const loadBusinessHours = async () => {
+    try {
+      const res = await fetch('/api/ai-agent/business-hours');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && data.workStartTime) {
+        setBusinessHours(data);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -68,9 +106,11 @@ export const AIAgentView: React.FC = () => {
 
   useEffect(() => {
     loadStatus();
+    loadBusinessHours();
     loadConversations();
     const interval = setInterval(() => {
       loadStatus();
+      loadBusinessHours();
       loadConversations();
     }, 5000);
     return () => clearInterval(interval);
@@ -98,7 +138,7 @@ export const AIAgentView: React.FC = () => {
   const handleDisconnect = async () => {
     try {
       await fetch('/api/ai-agent/disconnect', { method: 'POST' });
-      showNotification('WhatsApp desconectado com sucesso.', 'info');
+      showNotification('Sessão do WhatsApp desconectada', 'info');
       await loadStatus();
     } catch (err: any) {
       showNotification(err.message, 'error');
@@ -107,22 +147,46 @@ export const AIAgentView: React.FC = () => {
 
   const handleToggleAutoReply = async () => {
     if (!statusData) return;
-    const nextState = !statusData.isAutoReplyEnabled;
+    const newState = !statusData.isAutoReplyEnabled;
     try {
       await fetch('/api/ai-agent/toggle-auto-reply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: nextState })
+        body: JSON.stringify({ enabled: newState })
       });
-      setStatusData({ ...statusData, isAutoReplyEnabled: nextState });
-      showNotification(nextState ? '🤖 IA Comercial ativada para auto-resposta!' : '⏸️ Auto-resposta da IA pausada.', 'info');
+      setStatusData({ ...statusData, isAutoReplyEnabled: newState });
+      showNotification(newState ? 'IA ativada para responder clientes!' : 'IA pausada.', 'success');
     } catch (err: any) {
       showNotification(err.message, 'error');
     }
   };
 
-  const handleSendManual = async () => {
-    if (!manualText.trim() || !selectedConversation) return;
+  const handleSaveBusinessHours = async () => {
+    try {
+      setIsSavingHours(true);
+      const res = await fetch('/api/ai-agent/business-hours', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(businessHours)
+      });
+      const data = await res.json();
+      if (data && data.workStartTime) {
+        setBusinessHours(data);
+      }
+      showNotification('Horário comercial e intervalo de almoço atualizados com sucesso!', 'success');
+      confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+      setShowHoursConfig(false);
+    } catch (err: any) {
+      showNotification(err.message, 'error');
+    } finally {
+      setIsSavingHours(false);
+    }
+  };
+
+  const handleSendManualMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualText.trim() || !selectedConversation || isSendingManual) return;
+
     try {
       setIsSendingManual(true);
       const res = await fetch('/api/ai-agent/send-message', {
@@ -130,16 +194,20 @@ export const AIAgentView: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phone: selectedConversation.phone,
-          text: manualText,
+          text: manualText.trim(),
           leadId: selectedConversation.lead_id,
           leadName: selectedConversation.lead_name
         })
       });
-      if (!res.ok) throw new Error('Erro ao enviar mensagem');
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Erro ao enviar mensagem');
+      }
+
       setManualText('');
       await loadThread(selectedConversation.phone);
-      await loadConversations();
-      showNotification('Mensagem enviada!', 'success');
+      showNotification('Mensagem enviada com sucesso no WhatsApp!', 'success');
     } catch (err: any) {
       showNotification(err.message, 'error');
     } finally {
@@ -157,7 +225,7 @@ export const AIAgentView: React.FC = () => {
 
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {statusData?.status === 'connected' ? (
                 <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700/50 flex items-center gap-1.5 uppercase tracking-wider">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
@@ -174,19 +242,25 @@ export const AIAgentView: React.FC = () => {
                 </span>
               )}
 
-              <span className="text-xs text-indigo-400 font-semibold flex items-center gap-1">
-                <Bot className="w-3.5 h-3.5" />
-                Agente Comercial IA (SDR Vendedor)
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-950 text-indigo-300 border border-indigo-700/50 flex items-center gap-1">
+                <Laptop className="w-3 h-3 text-cyan-400" />
+                IA Consultora Expert em Tecnologia
+              </span>
+
+              {/* Sincronização Phone Badge */}
+              <span className="text-[10px] text-slate-300 flex items-center gap-1 font-medium bg-slate-900/80 px-2 py-0.5 rounded-md border border-slate-800">
+                <Smartphone className="w-3 h-3 text-emerald-400" />
+                Sincronizado no seu Celular em Tempo Real
               </span>
             </div>
 
             <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
               <Sparkles className="w-6 h-6 text-amber-400" />
-              IA Comercial: Atendimento, Negociação & Decisão
+              IA Comercial & Consultora de Tecnologia
             </h2>
 
             <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
-              O agente responde automaticamente no WhatsApp tirando dúvidas sobre sites e sistemas web, quebra objeções com educação, respeita recusas e identifica clientes com <strong>intenção real de fechar contrato</strong>!
+              O robô atua como um <strong>Arquiteto de Software & Consultor Tecnológico</strong>, explicando com clareza a solução que o cliente precisa (eliminar taxas de delivery, agendamento 24h, velocidade PageSpeed 95+), operando em <strong>jornada de 8h comerciais</strong> com pausa de almoço!
             </p>
           </div>
 
@@ -251,6 +325,109 @@ export const AIAgentView: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Business Hours & Lunch Break Card */}
+        <div className="mt-6 pt-5 border-t border-slate-800/80">
+          <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-indigo-400" />
+                  Jornada de Trabalho (8 Horas / Dia) & Intervalo de Almoço:
+                </span>
+                
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
+                  businessHours.badgeType === 'open' 
+                    ? 'bg-emerald-950 text-emerald-300 border-emerald-700/50' 
+                    : businessHours.badgeType === 'lunch'
+                    ? 'bg-amber-950 text-amber-300 border-amber-700/50'
+                    : 'bg-indigo-950 text-indigo-300 border-indigo-800/50'
+                }`}>
+                  {businessHours.badgeType === 'open' ? <Sun className="w-3 h-3 text-emerald-400" /> : businessHours.badgeType === 'lunch' ? <Utensils className="w-3 h-3 text-amber-400" /> : <Moon className="w-3 h-3 text-indigo-400" />}
+                  {businessHours.statusText}
+                </span>
+              </div>
+
+              <p className="text-[11px] text-slate-400">
+                Expediente: <strong>{businessHours.workStartTime} às {businessHours.workEndTime}</strong> | Pausa de Almoço: <strong>{businessHours.lunchStartTime} às {businessHours.lunchEndTime}</strong> (Segunda a Sexta).
+              </p>
+            </div>
+
+            <button
+              onClick={() => setShowHoursConfig(!showHoursConfig)}
+              className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs font-bold flex items-center gap-1.5 transition-all"
+            >
+              <Sliders className="w-3.5 h-3.5 text-indigo-400" />
+              <span>{showHoursConfig ? 'Ocultar Ajustes' : 'Configurar Horários'}</span>
+            </button>
+          </div>
+
+          {/* Expandable Hours Form */}
+          {showHoursConfig && (
+            <div className="mt-3 p-4 rounded-xl bg-slate-900/90 border border-indigo-500/30 grid grid-cols-1 sm:grid-cols-4 gap-4 animate-in fade-in zoom-in-95 duration-150">
+              <div>
+                <label className="text-[11px] font-semibold text-slate-300 block mb-1">Início do Expediente:</label>
+                <input
+                  type="time"
+                  value={businessHours.workStartTime}
+                  onChange={(e) => setBusinessHours({ ...businessHours, workStartTime: e.target.value })}
+                  className="glass-input w-full text-xs py-1.5 px-2 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-slate-300 block mb-1">Fim do Expediente:</label>
+                <input
+                  type="time"
+                  value={businessHours.workEndTime}
+                  onChange={(e) => setBusinessHours({ ...businessHours, workEndTime: e.target.value })}
+                  className="glass-input w-full text-xs py-1.5 px-2 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-amber-300 block mb-1">Início do Almoço:</label>
+                <input
+                  type="time"
+                  value={businessHours.lunchStartTime}
+                  onChange={(e) => setBusinessHours({ ...businessHours, lunchStartTime: e.target.value })}
+                  className="glass-input w-full text-xs py-1.5 px-2 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-amber-300 block mb-1">Fim do Almoço:</label>
+                <input
+                  type="time"
+                  value={businessHours.lunchEndTime}
+                  onChange={(e) => setBusinessHours({ ...businessHours, lunchEndTime: e.target.value })}
+                  className="glass-input w-full text-xs py-1.5 px-2 font-mono"
+                />
+              </div>
+
+              <div className="sm:col-span-4 flex items-center justify-between pt-2 border-t border-slate-800">
+                <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={businessHours.respectBusinessHours}
+                    onChange={(e) => setBusinessHours({ ...businessHours, respectBusinessHours: e.target.checked })}
+                    className="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                  />
+                  <span>Respeitar Jornada Comercial de 8h e Pausa de Almoço (Seg a Sex)</span>
+                </label>
+
+                <button
+                  onClick={handleSaveBusinessHours}
+                  disabled={isSavingHours}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 transition-all shadow-md"
+                >
+                  {isSavingHours ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  <span>Salvar Horários</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Stats Metrics Row */}
         <div className="mt-6 pt-5 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -380,83 +557,92 @@ export const AIAgentView: React.FC = () => {
                     <span>{selectedConversation.lead_name || 'Cliente'}</span>
                     <span className="text-xs font-mono text-emerald-400">({selectedConversation.phone})</span>
                   </h4>
-                  <p className="text-[10px] text-slate-400">Atendimento gerenciado pelo Agente Comercial IA</p>
+                  <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                    Sincronizado diretamente com seu WhatsApp no celular
+                  </p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-900 border border-slate-800 text-slate-300">
-                    {messages.length} mensagens
-                  </span>
-                </div>
+                <button
+                  onClick={() => loadThread(selectedConversation.phone)}
+                  className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400"
+                  title="Atualizar mensagens"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
               </div>
 
-              {/* Message List */}
-              <div className="p-4 space-y-4 overflow-y-auto max-h-[420px] flex-1 bg-slate-950/30">
-                {messages.map((msg) => {
-                  const isLead = msg.sender === 'lead';
-                  const isAI = msg.sender === 'ai';
+              {/* Message History Feed */}
+              <div className="p-4 space-y-3 overflow-y-auto max-h-[440px] flex-1 bg-slate-950/40">
+                {messages.length > 0 ? (
+                  messages.map((msg) => {
+                    const isFromLead = msg.sender === 'lead';
+                    const isFromAI = msg.sender === 'ai';
 
-                  return (
-                    <div
-                      key={msg.id}
-                      className={`flex flex-col ${isLead ? 'items-start' : 'items-end'}`}
-                    >
-                      <div className="flex items-center gap-1.5 mb-1 px-1">
-                        <span className="text-[10px] font-bold text-slate-400">
-                          {isLead ? `👤 ${msg.lead_name || 'Cliente'}` : isAI ? '🤖 IA Comercial (Rômulo)' : '👨‍💻 Você (Manual)'}
-                        </span>
-                        <span className="text-[9px] text-slate-500">
-                          {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-
+                    return (
                       <div
-                        className={`p-3.5 rounded-2xl max-w-lg text-xs leading-relaxed ${
-                          isLead
-                            ? 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
-                            : isAI
-                            ? 'bg-indigo-600/90 text-white shadow-lg shadow-indigo-600/20 rounded-tr-none'
-                            : 'bg-emerald-600 text-white rounded-tr-none'
-                        }`}
+                        key={msg.id}
+                        className={`flex flex-col ${isFromLead ? 'items-start' : 'items-end'}`}
                       >
-                        <div className="whitespace-pre-wrap">{msg.message}</div>
-
-                        {/* AI Decision Stamp */}
-                        {msg.ai_decision && (
-                          <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between text-[10px] opacity-80">
-                            <span>Decisão: {msg.ai_decision.replace('_', ' ').toUpperCase()}</span>
-                            {msg.ai_decision === 'interessado_fechar' && <span>🔥 Lead Quente!</span>}
+                        <div
+                          className={`max-w-[85%] rounded-2xl p-3.5 text-xs shadow-md space-y-1 ${
+                            isFromLead
+                              ? 'bg-slate-900 text-slate-200 border border-slate-800 rounded-tl-none'
+                              : isFromAI
+                              ? 'bg-gradient-to-r from-indigo-950 to-purple-950 text-indigo-100 border border-indigo-800/60 rounded-tr-none'
+                              : 'bg-emerald-950 text-emerald-100 border border-emerald-800/60 rounded-tr-none'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2 text-[9px] font-bold opacity-75 border-b border-white/10 pb-1">
+                            <span>{isFromLead ? '👤 CLIENTE' : isFromAI ? '🤖 IA CONSULTORA' : '🧑 VOCÊ (MANUAL)'}</span>
+                            <span className="font-mono">{msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                           </div>
-                        )}
+
+                          <div className="whitespace-pre-wrap leading-relaxed">
+                            {msg.message}
+                          </div>
+
+                          {msg.ai_reasoning && (
+                            <div className="mt-1 pt-1 border-t border-indigo-500/20 text-[9px] text-indigo-300 italic flex items-center gap-1">
+                              <Sparkles className="w-2.5 h-2.5 text-amber-400" />
+                              Raciocínio IA: {msg.ai_reasoning}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                ) : (
+                  <div className="p-8 text-center text-slate-500 text-xs">
+                    Carregando mensagens da conversa...
+                  </div>
+                )}
               </div>
 
-              {/* Manual Message Input Box (If user wants to intervene) */}
-              <div className="p-3 border-t border-slate-800 bg-slate-950/80 flex items-center gap-2">
+              {/* Reply Input Box */}
+              <form onSubmit={handleSendManualMessage} className="p-3 border-t border-slate-800 bg-slate-950/80 flex items-center gap-2">
                 <input
                   type="text"
                   value={manualText}
                   onChange={(e) => setManualText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleSendManual(); }}
-                  placeholder="Enviar mensagem manual no WhatsApp (assume a conversa)..."
-                  className="flex-1 glass-input text-xs py-2.5 px-4 rounded-xl"
+                  placeholder="Digitar resposta manual ou instrução para o cliente..."
+                  className="glass-input flex-1 text-xs py-2 px-3"
+                  disabled={isSendingManual || statusData?.status !== 'connected'}
                 />
                 <button
-                  onClick={handleSendManual}
-                  disabled={isSendingManual || !manualText.trim()}
-                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all disabled:opacity-50"
+                  type="submit"
+                  disabled={isSendingManual || !manualText.trim() || statusData?.status !== 'connected'}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-md"
                 >
-                  <Send className="w-3.5 h-3.5" />
+                  {isSendingManual ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                   <span>Enviar</span>
                 </button>
-              </div>
+              </form>
             </>
           ) : (
-            <div className="h-full flex items-center justify-center p-12 text-center text-slate-500 text-xs">
-              Selecione uma conversa ao lado para acompanhar o atendimento da IA em tempo real.
+            <div className="p-12 text-center text-slate-500 text-xs flex flex-col items-center justify-center h-full">
+              <MessageSquare className="w-12 h-12 text-slate-700 mb-3" />
+              <span>Selecione uma conversa ao lado para visualizar o histórico completo</span>
             </div>
           )}
         </div>

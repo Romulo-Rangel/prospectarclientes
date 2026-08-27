@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { WhatsAppSocketService } from '../services/whatsapp-socket.service.js';
+import { BusinessHoursService } from '../services/business-hours.service.js';
 import { db } from '../db/database.js';
 
 export class AIAgentController {
@@ -107,6 +108,25 @@ export class AIAgentController {
       }
 
       res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+
+  public static getBusinessHours(req: Request, res: Response) {
+    try {
+      const status = BusinessHoursService.checkCurrentStatus();
+      res.json(status);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+
+  public static saveBusinessHours(req: Request, res: Response) {
+    try {
+      const updated = BusinessHoursService.saveSettings(req.body);
+      const status = BusinessHoursService.checkCurrentStatus();
+      res.json({ success: true, ...status });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

@@ -79,6 +79,12 @@ db.exec(`
     price_range TEXT DEFAULT 'R$ 900 a R$ 3.500',
     delay_min_seconds INTEGER DEFAULT 10,
     delay_max_seconds INTEGER DEFAULT 25,
+    work_start_time TEXT DEFAULT '09:00',
+    work_end_time TEXT DEFAULT '18:00',
+    lunch_start_time TEXT DEFAULT '12:00',
+    lunch_end_time TEXT DEFAULT '13:00',
+    work_days TEXT DEFAULT '1,2,3,4,5',
+    respect_business_hours INTEGER DEFAULT 1,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -97,12 +103,44 @@ db.exec(`
   );
 `);
 
+// Migration for existing databases
+try {
+  db.exec(`
+    ALTER TABLE ai_agent_settings ADD COLUMN work_start_time TEXT DEFAULT '09:00';
+  `);
+} catch {}
+try {
+  db.exec(`
+    ALTER TABLE ai_agent_settings ADD COLUMN work_end_time TEXT DEFAULT '18:00';
+  `);
+} catch {}
+try {
+  db.exec(`
+    ALTER TABLE ai_agent_settings ADD COLUMN lunch_start_time TEXT DEFAULT '12:00';
+  `);
+} catch {}
+try {
+  db.exec(`
+    ALTER TABLE ai_agent_settings ADD COLUMN lunch_end_time TEXT DEFAULT '13:00';
+  `);
+} catch {}
+try {
+  db.exec(`
+    ALTER TABLE ai_agent_settings ADD COLUMN work_days TEXT DEFAULT '1,2,3,4,5';
+  `);
+} catch {}
+try {
+  db.exec(`
+    ALTER TABLE ai_agent_settings ADD COLUMN respect_business_hours INTEGER DEFAULT 1;
+  `);
+} catch {}
+
 // Insert default AI settings if not exist
 const aiSettingsCount = db.prepare('SELECT count(*) as count FROM ai_agent_settings').get() as { count: number };
 if (aiSettingsCount.count === 0) {
   db.prepare(`
-    INSERT INTO ai_agent_settings (id, is_auto_reply_enabled, is_auto_hunter_enabled, sdr_persona, price_range)
-    VALUES ('default', 1, 1, 'Consultor Comercial Especialista em Soluções Web & Automação do Rômulo', 'R$ 900 a R$ 3.500')
+    INSERT INTO ai_agent_settings (id, is_auto_reply_enabled, is_auto_hunter_enabled, sdr_persona, price_range, work_start_time, work_end_time, lunch_start_time, lunch_end_time, work_days, respect_business_hours)
+    VALUES ('default', 1, 1, 'Consultor Comercial Especialista em Soluções Web & Automação do Rômulo', 'R$ 900 a R$ 3.500', '09:00', '18:00', '12:00', '13:00', '1,2,3,4,5', 1)
   `).run();
 }
 

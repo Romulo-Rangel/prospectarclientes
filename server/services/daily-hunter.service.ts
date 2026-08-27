@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { db } from '../db/database.js';
 import { ScraperService } from './scraper.service.js';
 import { renderOutreachTemplate } from './outreach.service.js';
+import { BusinessHoursService } from './business-hours.service.js';
 
 export interface AutopilotConfig {
   dailyQuota: number;
@@ -109,12 +110,22 @@ export class DailyHunterService {
 
     const settings = this.getSettings();
     const today = new Date().toISOString().split('T')[0];
-    const alreadySentToday = this.getTodayDispatchedCount();
+    const todayCount = this.getTodayDispatchedCount();
     const quota = forceCount || settings.dailyQuota;
 
-    const remainingQuota = Math.max(0, quota - (forceCount ? 0 : alreadySentToday));
-    if (remainingQuota === 0) {
+    const remainingQuota = settings.dailyQuota - todayCount;
+    if (remainingQuota <= 0) {
       return { totalHunted: 0, leads: [] };
+    }
+
+    // Checa jornada de trabalho comercial e horário de almoço
+    const bh = BusinessHoursService.checkCurrentStatus();
+    if (!bh.isWorkingTime && bh.respectBusinessHours) {
+      console.log(`⏸️ [Robô Caçador] Pausado: ${bh.statusText}. Respeitando jornada comercial de 8h e almoço.`);
+      return { 
+        totalHunted: 0, 
+        leads: []
+      };
     }
 
     // Pick random niche and city from rotation pool
